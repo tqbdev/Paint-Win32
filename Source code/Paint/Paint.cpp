@@ -205,6 +205,8 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 				return;
 			}
 		}
+
+		OpenFileDialog(hwnd);
 	}
 		break;
 	case ID_FILE_NEW:
@@ -390,13 +392,50 @@ void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
 
 void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 {
+	int xOld = x;
+	int yOld = y;
 	if (gDrawing)
 	{
 		if (keyFlags == MK_SHIFT + 1)
 		{
 			if (gShapeType == 0) // Line
 			{
+				if (x > gLeftTop.x && y > gLeftTop.y) // Goc phan tu thu 1
+				{
+					int c = y - x;
+					double d1 = abs(gLeftTop.x - gLeftTop.y + c) / sqrt(2);
+					
+					if (abs(y - gLeftTop.y) < d1) y = gLeftTop.y;
+					else if (abs(x - gLeftTop.x) < d1) x = gLeftTop.x;
+					else x = gLeftTop.x + abs(y - gLeftTop.y);
+				}
+				else if (x < gLeftTop.x && y > gLeftTop.y) // Goc phan tu thu 2
+				{
+					int c = - y - x;
+					double d1 = abs(gLeftTop.x + gLeftTop.y + c) / sqrt(2);
 
+					if (abs(y - gLeftTop.y) < d1) y = gLeftTop.y;
+					else if (abs(x - gLeftTop.x) < d1) x = gLeftTop.x;
+					else y = gLeftTop.y + abs(x - gLeftTop.x);
+				}
+				else if (x < gLeftTop.x && y < gLeftTop.y) // Goc phan tu thu 3
+				{
+					int c = y - x;
+					double d1 = abs(gLeftTop.x - gLeftTop.y + c) / sqrt(2);
+
+					if (abs(y - gLeftTop.y) < d1) y = gLeftTop.y;
+					else if (abs(x - gLeftTop.x) < d1) x = gLeftTop.x;
+					else x = gLeftTop.x - abs(y - gLeftTop.y);
+				}
+				else if (x > gLeftTop.x && y < gLeftTop.y) // Goc phan tu thu 4
+				{
+					int c = -y - x;
+					double d1 = abs(gLeftTop.x + gLeftTop.y + c) / sqrt(2);
+
+					if (abs(y - gLeftTop.y) < d1) y = gLeftTop.y;
+					else if (abs(x - gLeftTop.x) < d1) x = gLeftTop.x;
+					else y = gLeftTop.y - abs(x - gLeftTop.x);
+				}
 			}
 			else
 			{
@@ -423,7 +462,7 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 	}
 
 	WCHAR text[30];
-	wsprintf(text, L"%d, %dpx", x, y);
+	wsprintf(text, L"%d, %dpx", xOld, yOld);
 	SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 0, (LPARAM)text);
 }
 

@@ -39,16 +39,17 @@ không load lên được.
 ### -------------- MAIN FLOW --------------
 1. Khởi chạy chương trình, mặc định vẽ line, tùy chọn các hình vẽ cơ bản ở menu.
 2. Vẽ trên nền chương trình.
-3. Có thể Save file những thứ đã vẽ lại dưới các định dạng  binary (.objpaint), bitmap (.bmp), png (.png).
-4. Có thể Open file để tiếp tục vẽ.
+3. Nhấn shift vẽ các đối tượng đặc biệt (đường thẳng, hình vuông, hình tròn).
+4. Có thể Save file những thứ đã vẽ lại dưới các định dạng  binary (.objpaint), bitmap (.bmp), png (.png).
+5. Có thể Open file để tiếp tục vẽ.
 ### ---------- ADDITIONAL FLOW ------------
 1. Khi thoát chương trình, nếu đã vẽ mà chưa lưu sẽ hỏi có muốn lưu hay không?
-2. Bắt các lỗi mở và lưu file.
+2. Khi mở file trong khi đang vẽ thì hỏi có muốn lưu hay không?
 ### ------------ LINK BITBUCKET -----------
-> 
+> https://1512029@bitbucket.org/1512029/paint.git
 ```
 Chú ý link repository trên là private đã add key public của giáo viên.
 Đồng thời add user tdquang_edu vào repository với quyền read.
 ```
 ### ------------- LINK YOUTUBE ------------
-> 
+> https://youtu.be/Jk_jeQDzUdc
