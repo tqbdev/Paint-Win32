@@ -35,7 +35,7 @@
 
 > # Solve Issues
 1. Sử dụng BitBlt để giảm giật hình khi vẽ lại. Hiện tại thì tỉ lệ giật rất thấp. (hầu như là không có)
-Nhưng load PNG lên vẫn còn hơi giật.
+Nhưng load PNG lên vẫn có lúc giật.
 Sử dụng kỹ thuật Double-buffing - các biến sử dụng thường xuyên được đặt static để xử lý nhanh.
 2. Sử dụng GDI+ để load định dạng PNG va save dưới dạng PNG.
 Kỹ thuật save PNG thực ra giống như save Bitmap chỉ convert Bitmap thành PNG dùng GDI+.
@@ -58,4 +58,5 @@ Chú ý link repository trên là private đã add key public của giáo viên.
 Đồng thời add user tdquang_edu vào repository với quyền read.
 ```
 ### ------------- LINK YOUTUBE ------------
-> https://youtu.be/Jk_jeQDzUdc
+> ver 1.0: https://youtu.be/Jk_jeQDzUdc
+> ver 2.0: https://youtu.be/Gz5Pj7eGp3Q
