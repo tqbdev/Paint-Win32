@@ -12,12 +12,17 @@ namespace MyPaint
 	{
 	}
 
-	void CEllipse::Draw(HWND hWnd, POINT leftTop, POINT rightBottom, BOOL bSetRop)
+	void CEllipse::Draw(HWND hWnd, POINT leftTop, POINT rightBottom, BOOL bSetRop, HDC hdc)
 	{
 		this->leftTop_ = leftTop;
 		this->rightBottom_ = rightBottom;
 
-		HDC hdc = GetDC(hWnd);
+		BOOL fCheck = FALSE;
+		if (hdc == NULL)
+		{
+			hdc = GetDC(hWnd);
+			fCheck = TRUE;
+		}
 
 		if (bSetRop == TRUE) SetROP2(hdc, R2_MERGEPENNOT); // Chế độ vẽ không làm ảnh hưởng đến các hình đã vẽ
 
@@ -25,12 +30,12 @@ namespace MyPaint
 
 		Ellipse(hdc, leftTop.x, leftTop.y, rightBottom.x, rightBottom.y);
 
-		ReleaseDC(hWnd, hdc);
+		if (fCheck) ReleaseDC(hWnd, hdc);
 	}
 
-	void CEllipse::ReDraw(HWND hWnd)
+	void CEllipse::ReDraw(HWND hWnd, HDC hdc)
 	{
-		Draw(hWnd, this->leftTop_, this->rightBottom_);
+		Draw(hWnd, this->leftTop_, this->rightBottom_, TRUE, hdc);
 	}
 
 	void CEllipse::WriteBinary(std::ofstream &out)

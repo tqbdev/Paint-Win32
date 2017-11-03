@@ -33,6 +33,7 @@ MyPaint::StatusBar					*gStatusBar = NULL;
 
 std::wstring						gFileLoadedPath;
 int									gFileType = 1;
+HBITMAP								file = NULL;
 
 												// Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);

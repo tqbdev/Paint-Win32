@@ -174,6 +174,8 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 	//
 	SetWindowText(hwnd, L"Untitled - Paint");
 	//
+	MyPaint::Convert::GDIPlusInit();
+	//
 	return TRUE;
 }
 
@@ -197,10 +199,10 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 			{
 			case IDNO:
 				OpenFileDialog(hwnd);
-				break;
+				return;
 			case IDYES:
 				SaveFileDialog(hwnd);
-				break;
+				return;
 			case IDCANCEL:
 				return;
 			}
@@ -242,9 +244,11 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 			gShapesUndoRedo.pop_back();
 		}
 
+		SetWindowText(hwnd, L"Untitled - Paint");
 		EnableMenuItem(hMenu, ID_EDIT_UNDO, MF_DISABLED);
 		EnableMenuItem(hMenu, ID_EDIT_REDO, MF_DISABLED);
-		InvalidateRect(hwnd, NULL, TRUE);
+		RECT drawArea = { 0, 0, gArea.x, gArea.y };
+		InvalidateRect(hwnd, &drawArea, TRUE);
 	}
 	break;
 	case ID_SHAPE_LINE:
@@ -272,7 +276,8 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 		if (size == 0) EnableMenuItem(hMenu, ID_EDIT_UNDO, MF_DISABLED);
 
 		EnableMenuItem(hMenu, ID_EDIT_REDO, MF_ENABLED);
-		InvalidateRect(hwnd, NULL, TRUE);
+		RECT drawArea = { 0, 0, gArea.x, gArea.y };
+		InvalidateRect(hwnd, &drawArea, TRUE);
 	}
 	break;
 	case ID_EDIT_REDO:
@@ -284,7 +289,8 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 		if (size == 0) EnableMenuItem(hMenu, ID_EDIT_REDO, MF_DISABLED);
 
 		EnableMenuItem(hMenu, ID_EDIT_UNDO, MF_ENABLED);
-		InvalidateRect(hwnd, NULL, TRUE);
+		RECT drawArea = { 0, 0, gArea.x, gArea.y };
+		InvalidateRect(hwnd, &drawArea, TRUE);
 	}
 	break;
 	case IDM_ABOUT:
@@ -312,29 +318,53 @@ void OnSize(HWND hwnd, UINT state, int cx, int cy)
 
 void OnMove(HWND hwnd, int x, int y)
 {
-	InvalidateRect(hwnd, NULL, TRUE);
+	RECT drawArea = { 0, 0, gArea.x, gArea.y };
+	InvalidateRect(hwnd, &drawArea, TRUE);
 }
 
 void OnPaint(HWND hwnd)
 {
-	PAINTSTRUCT ps;
-	HDC hdc;
+	static HDC          hdcMem;
+	static HBITMAP      hbmMem;
+	static HANDLE       hOld;
+
+	static PAINTSTRUCT ps;
+	static HDC hdc;
 	hdc = BeginPaint(hwnd, &ps);
+
+	hdcMem = CreateCompatibleDC(hdc);
+	hbmMem = CreateCompatibleBitmap(hdc, gArea.x + 1, gArea.y + 1);
+	
+	hOld = SelectObject(hdcMem, hbmMem);
+
+	// Draw into hdcMem here
+	RECT rect = { 0,0,gArea.x + 1, gArea.y + 1 };
+	FillRect(hdcMem, &rect, HBRUSH(RGB(255, 255, 255)));
 
 	switch (gFileType)
 	{
 	case 2:
-		MyPaint::Convert::BMPToHDC(hwnd, hInst, gFileLoadedPath);
+		//MyPaint::Convert::BMPToHDC(hwnd, hInst, gFileLoadedPath, hdcMem);
+		MyPaint::Convert::BMPToHDC(file, hdcMem);
 		break;
 	case 3:
-		MyPaint::Convert::PNGToHDC(hwnd, hInst, gFileLoadedPath);
+		//MyPaint::Convert::PNGToHDC(hwnd, hInst, gFileLoadedPath, hdcMem);
+		MyPaint::Convert::PNGToHDC(hdcMem);
 		break;
 	}
 
 	for (int i = 0; i < gShapes.size(); i++)
 	{
-		gShapes[i]->ReDraw(hwnd);
+		gShapes[i]->ReDraw(hwnd, hdcMem);
 	}
+
+	// Transfer the off-screen DC to the screen
+	BitBlt(hdc, 0, 0, gArea.x + 1, gArea.y + 1, hdcMem, 0, 0, SRCCOPY);
+
+	// Free-up the off-screen DC
+	SelectObject(hdcMem, hOld);
+	DeleteObject(hbmMem);
+	DeleteDC(hdcMem);
 
 	EndPaint(hwnd, &ps);
 }
@@ -374,6 +404,8 @@ void OnClose(HWND hwnd)
 
 	delete gStatusBar;
 	MyPaint::CShapeCache::ClearCache();
+	MyPaint::Convert::GDIPlusDestroy();
+	DeleteObject(file);
 	DestroyWindow(hwnd);
 }
 
@@ -453,6 +485,7 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 		}
 
 		MyPaint::IShape *preview = MyPaint::CShapeCache::GetShape(gShapeType);
+
 		preview->Draw(hwnd, gLeftTop, gRightBottom);
 
 		gRightBottom.x = x;
@@ -477,7 +510,8 @@ void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
 		EnableMenuItem(GetMenu(hwnd), ID_EDIT_UNDO, MF_ENABLED);
 
 		gDrawing = FALSE;
-		InvalidateRect(hwnd, NULL, TRUE);
+		RECT drawArea = { 0, 0, gArea.x, gArea.y };
+		InvalidateRect(hwnd, &drawArea, TRUE);
 	}
 }
 
@@ -634,20 +668,20 @@ void OpenFileDialog(HWND hwnd)
 				res->ReadBinary(in);
 				gShapes.push_back(res);
 			}
-
-			InvalidateRect(hwnd, NULL, TRUE);
 		}
 		break;
 		case 2:
-			MyPaint::Convert::BMPToHDC(hwnd, hInst, buffer);
+			file = (HBITMAP)LoadImage(hInst, const_cast<LPWSTR>(buffer.c_str()), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 			break;
 		case 3:
-			MyPaint::Convert::PNGToHDC(hwnd, hInst, buffer);
+			MyPaint::Convert::LoadPNG(buffer);
 			break;
 		}
 		gFileLoadedPath = buffer;
 
 		buffer += L" - Paint";
 		SetWindowText(hwnd, const_cast<LPWSTR>(buffer.substr(ofn.nFileOffset).c_str()));
+		RECT drawArea = { 0, 0, gArea.x, gArea.y };
+		InvalidateRect(hwnd, &drawArea, TRUE);
 	}
 }

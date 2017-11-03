@@ -3,6 +3,10 @@
 #include <gdiplus.h>
 #pragma comment(lib,"gdiplus.lib")
 
+Gdiplus::GdiplusStartupInput	gdiplusStartupInput;
+ULONG_PTR						gdiplusToken;
+Gdiplus::Image					*imagePNG;
+
 namespace MyPaint
 {
 	bool Convert::HDCToBMP(std::wstring filePath, HDC Context, RECT Area, uint16_t BitsPerPixel)
@@ -42,32 +46,49 @@ namespace MyPaint
 		return false;
 	}
 
-	void Convert::BMPToHDC(HWND hwnd, HINSTANCE hInst, std::wstring &filePath)
+	void Convert::BMPToHDC(HBITMAP file, HDC hdc)
 	{
-		BITMAP bm;
-		HBITMAP menu = (HBITMAP)LoadImage(hInst, const_cast<LPWSTR>(filePath.c_str()), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		HDC hdc = GetDC(hwnd);
+		static BITMAP bm;
 
 		HDC hdcMem = CreateCompatibleDC(hdc);
-		HBITMAP hbmOld = (HBITMAP)SelectObject(hdcMem, menu);
+		HANDLE hbmOld = SelectObject(hdcMem, file);
 
-		GetObject(menu, sizeof(bm), &bm);
+		GetObject(file, sizeof(bm), &bm);
 
 		BitBlt(hdc, 0, 0, bm.bmWidth, bm.bmHeight, hdcMem, 0, 0, SRCCOPY);
 
 		SelectObject(hdcMem, hbmOld);
 		DeleteDC(hdcMem);
+	}
 
-		ReleaseDC(hwnd, hdc);
+	void Convert::BMPToHDC(HWND hwnd, HINSTANCE hInst, std::wstring &filePath, HDC hdc)
+	{
+		static BITMAP bm;
+		static HBITMAP file = (HBITMAP)LoadImage(hInst, const_cast<LPWSTR>(filePath.c_str()), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+
+		BOOL fCheck = FALSE;
+		if (hdc == NULL)
+		{
+			hdc = GetDC(hwnd);
+			fCheck = TRUE;
+		}
+
+		HDC hdcMem = CreateCompatibleDC(hdc);
+		HANDLE hbmOld = SelectObject(hdcMem, file);
+
+		GetObject(file, sizeof(bm), &bm);
+
+		BitBlt(hdc, 0, 0, bm.bmWidth, bm.bmHeight, hdcMem, 0, 0, SRCCOPY);
+
+		SelectObject(hdcMem, hbmOld);
+		DeleteDC(hdcMem);
+		DeleteObject(file);
+
+		if (fCheck) ReleaseDC(hwnd, hdc);
 	}
 
 	int Convert::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	{
-
-		using namespace Gdiplus;
-		GdiplusStartupInput gdiplusStartupInput;
-		ULONG_PTR gdiplusToken;
-		GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 		UINT  num = 0;          // number of image encoders
 		UINT  size = 0;         // size of the image encoder array in bytes
 
@@ -94,18 +115,12 @@ namespace MyPaint
 		}
 
 		free(pImageCodecInfo);
-		GdiplusShutdown(gdiplusToken);
 		return -1;  // Failure
 	}
 
 
 	bool Convert::HDCToPNG(std::wstring filePath, HDC Context, RECT Area, uint16_t BitsPerPixel)
 	{
-		using namespace Gdiplus;
-		GdiplusStartupInput gdiplusStartupInput;
-		ULONG_PTR gdiplusToken;
-		GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
-
 		uint32_t Width = Area.right - Area.left;
 		uint32_t Height = Area.bottom - Area.top;
 		BITMAPINFO Info;
@@ -134,26 +149,44 @@ namespace MyPaint
 		bmp.Save(const_cast<LPWSTR>(filePath.c_str()), &pngClsid, NULL);
 
 		DeleteObject(Section);
-		GdiplusShutdown(gdiplusToken);
 		return true;
 	}
 
-	void Convert::PNGToHDC(HWND hwnd, HINSTANCE hInst, std::wstring &filePath)
+	void Convert::PNGToHDC(HWND hwnd, HINSTANCE hInst, std::wstring &filePath, HDC hdc)
+	{
+		if (hdc == NULL) hdc = GetDC(hwnd);
+
+		if (imagePNG != NULL) delete imagePNG;
+		imagePNG = new Gdiplus::Image(const_cast<LPWSTR>(filePath.c_str()));
+		Gdiplus::Graphics gp(hdc);
+		static Gdiplus::Rect a = { 0,0, (INT)imagePNG->GetWidth(), (INT)imagePNG->GetHeight() };
+		gp.DrawImage(imagePNG, a);
+	}
+
+	void Convert::LoadPNG(std::wstring &filePath)
+	{
+		if (imagePNG != NULL) delete imagePNG;
+		imagePNG = new Gdiplus::Image(const_cast<LPWSTR>(filePath.c_str()));
+	}
+
+	void Convert::PNGToHDC(HDC hdc)
+	{
+		Gdiplus::Graphics gp(hdc);
+		static Gdiplus::Rect a = { 0,0, (INT)imagePNG->GetWidth(), (INT)imagePNG->GetHeight() };
+		gp.DrawImage(imagePNG, a);
+	}
+
+	void Convert::GDIPlusInit()
 	{
 		using namespace Gdiplus;
-		GdiplusStartupInput gdiplusStartupInput;
-		ULONG_PTR gdiplusToken;
 		GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-		HDC hdc = GetDC(hwnd);
+		imagePNG = NULL;
+	}
 
-		{
-			Gdiplus::Image img(const_cast<LPWSTR>(filePath.c_str()));
-			Gdiplus::Graphics gp(hdc);
-			Gdiplus::Rect a = { 0,0, (INT)img.GetWidth(), (INT)img.GetHeight() };
-			gp.DrawImage(&img, a);
-		}
-
+	void Convert::GDIPlusDestroy()
+	{
+		using namespace Gdiplus;
 		GdiplusShutdown(gdiplusToken);
 	}
 }
