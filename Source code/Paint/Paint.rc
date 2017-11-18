@@ -98,7 +98,7 @@ CAPTION "About Paint"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     ICON            IDI_PAINT,IDC_STATIC,14,14,20,20
-    LTEXT           "Paint, Version 1.0 by TqbDev",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "Paint, Version 2.0 by TqbDev",IDC_STATIC,42,14,114,8,SS_NOPREFIX
     LTEXT           "Copyright (C) 2017",IDC_STATIC,42,26,114,8
     DEFPUSHBUTTON   "OK",IDOK,126,57,50,14,WS_GROUP
     LTEXT           "Contract: tranquocbao3897@gmail.com",IDC_STATIC,41,39,128,8
@@ -163,6 +163,9 @@ END
 STRINGTABLE
 BEGIN
     IDS_APP_TITLE           "Paint"
+    IDS_RECTANGLE           "Rectangle"
+    IDS_ELLIPSE             "Ellipse"
+    IDS_LINE                "Line"
     IDC_PAINT               "PAINT"
 END
 

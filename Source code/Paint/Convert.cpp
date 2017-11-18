@@ -3,16 +3,15 @@
 #include <gdiplus.h>
 #pragma comment(lib,"gdiplus.lib")
 
-Gdiplus::GdiplusStartupInput	gdiplusStartupInput;
-ULONG_PTR						gdiplusToken;
-Gdiplus::Image					*imagePNG;
-
 namespace MyPaint
 {
-	bool Convert::HDCToBMP(std::wstring filePath, HDC Context, RECT Area, uint16_t BitsPerPixel)
+	Gdiplus::Image* ImageConvert::image = NULL;
+
+	bool ImageConvert::HDCToBMP(std::wstring filePath, HDC Context, RECT Area, uint16_t BitsPerPixel)
 	{
 		uint32_t Width = Area.right - Area.left;
 		uint32_t Height = Area.bottom - Area.top;
+
 		BITMAPINFO Info;
 		BITMAPFILEHEADER Header;
 		memset(&Info, 0, sizeof(Info));
@@ -46,48 +45,7 @@ namespace MyPaint
 		return false;
 	}
 
-	void Convert::BMPToHDC(HBITMAP file, HDC hdc)
-	{
-		static BITMAP bm;
-
-		HDC hdcMem = CreateCompatibleDC(hdc);
-		HANDLE hbmOld = SelectObject(hdcMem, file);
-
-		GetObject(file, sizeof(bm), &bm);
-
-		BitBlt(hdc, 0, 0, bm.bmWidth, bm.bmHeight, hdcMem, 0, 0, SRCCOPY);
-
-		SelectObject(hdcMem, hbmOld);
-		DeleteDC(hdcMem);
-	}
-
-	void Convert::BMPToHDC(HWND hwnd, HINSTANCE hInst, std::wstring &filePath, HDC hdc)
-	{
-		static BITMAP bm;
-		static HBITMAP file = (HBITMAP)LoadImage(hInst, const_cast<LPWSTR>(filePath.c_str()), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-
-		BOOL fCheck = FALSE;
-		if (hdc == NULL)
-		{
-			hdc = GetDC(hwnd);
-			fCheck = TRUE;
-		}
-
-		HDC hdcMem = CreateCompatibleDC(hdc);
-		HANDLE hbmOld = SelectObject(hdcMem, file);
-
-		GetObject(file, sizeof(bm), &bm);
-
-		BitBlt(hdc, 0, 0, bm.bmWidth, bm.bmHeight, hdcMem, 0, 0, SRCCOPY);
-
-		SelectObject(hdcMem, hbmOld);
-		DeleteDC(hdcMem);
-		DeleteObject(file);
-
-		if (fCheck) ReleaseDC(hwnd, hdc);
-	}
-
-	int Convert::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
+	int ImageConvert::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	{
 		UINT  num = 0;          // number of image encoders
 		UINT  size = 0;         // size of the image encoder array in bytes
@@ -118,8 +76,7 @@ namespace MyPaint
 		return -1;  // Failure
 	}
 
-
-	bool Convert::HDCToPNG(std::wstring filePath, HDC Context, RECT Area, uint16_t BitsPerPixel)
+	bool ImageConvert::HDCToPNG(std::wstring filePath, HDC Context, RECT Area, uint16_t BitsPerPixel)
 	{
 		uint32_t Width = Area.right - Area.left;
 		uint32_t Height = Area.bottom - Area.top;
@@ -152,41 +109,26 @@ namespace MyPaint
 		return true;
 	}
 
-	void Convert::PNGToHDC(HWND hwnd, HINSTANCE hInst, std::wstring &filePath, HDC hdc)
+	void ImageConvert::LoadImg(std::wstring &filePath)
 	{
-		if (hdc == NULL) hdc = GetDC(hwnd);
-
-		if (imagePNG != NULL) delete imagePNG;
-		imagePNG = new Gdiplus::Image(const_cast<LPWSTR>(filePath.c_str()));
-		Gdiplus::Graphics gp(hdc);
-		static Gdiplus::Rect a = { 0,0, (INT)imagePNG->GetWidth(), (INT)imagePNG->GetHeight() };
-		gp.DrawImage(imagePNG, a);
+		if (image != NULL) delete image;
+		image = new Gdiplus::Image(const_cast<LPWSTR>(filePath.c_str()));
 	}
 
-	void Convert::LoadPNG(std::wstring &filePath)
-	{
-		if (imagePNG != NULL) delete imagePNG;
-		imagePNG = new Gdiplus::Image(const_cast<LPWSTR>(filePath.c_str()));
-	}
-
-	void Convert::PNGToHDC(HDC hdc)
-	{
-		Gdiplus::Graphics gp(hdc);
-		static Gdiplus::Rect a = { 0,0, (INT)imagePNG->GetWidth(), (INT)imagePNG->GetHeight() };
-		gp.DrawImage(imagePNG, a);
-	}
-
-	void Convert::GDIPlusInit()
+	void ImageConvert::ImgToHDC(/*HDC hdc*/ Gdiplus::Graphics *gp)
 	{
 		using namespace Gdiplus;
-		GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+		if (image == NULL) return;
 
-		imagePNG = NULL;
+		//Graphics *gp = new Graphics(hdc);
+		static Rect a = { 0,0, (INT)image->GetWidth(), (INT)image->GetHeight() };
+		gp->DrawImage(image, a);
+		//delete gp;
 	}
 
-	void Convert::GDIPlusDestroy()
+	void ImageConvert::ClearImg()
 	{
-		using namespace Gdiplus;
-		GdiplusShutdown(gdiplusToken);
+		if (image != NULL) delete image;
+		image = NULL;
 	}
 }

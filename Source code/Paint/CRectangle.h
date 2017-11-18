@@ -1,17 +1,15 @@
 #pragma once
-#include "IShape.h"
+#include "CShape.h"
 
 namespace MyPaint
 {
-	class CRectangle : public IShape
+	class CRectangle : public CShape
 	{
 	public:
 		CRectangle();
 		~CRectangle();
 
-		void Draw(HWND hWnd, POINT leftTop, POINT rightBottom, BOOL bSetRop = TRUE, HDC hdc = NULL);
-		void ReDraw(HWND hWnd, HDC hdc = NULL);
+		void Draw(Graphics *gp, POINT leftTop, POINT rightBottom, COLORREF color, DashStyle penStyle, double penWidth, BOOL bSetRop = TRUE);
 		void WriteBinary(std::ofstream &out);
-		void ReadBinary(std::ifstream &in);
 	};
 }

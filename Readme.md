@@ -1,4 +1,4 @@
-# Readme for deadline Paint
+# Readme for deadline Paint Update GDI+ and Ribbon
 
 ### ---------------- INFO ----------------
 1. ID: 1512029
@@ -8,15 +8,15 @@
 5. Release: Bản release được build ở dạng release.
 
 ### -------------- HAVE DONE --------------
-1. Giao diện chương trình. (Menu, Status Bar)
-2. Xử lý GDI, Open File và Save File.
+1. Giao diện chương trình. (Menu, Status Bar, Ribbon)
+2. Xử lý GDI+, Open File và Save File.
 3. Bọc tất cả các đối tượng vẽ vào các lớp model. 
 4. Sử dụng đa xạ (polymorphism) để cài đặt việc quản lý các đối tượng và vẽ hình. 
 5. Sử dụng mẫu thiết kế Prototypes để tạo ra hàng mẫu nhằm vẽ ở chế độ xem trước (preview).
 6. Sử dụng mẫu thiết kế Factory để tạo mới đối tượng.
 7. Cụ thể:
 
-> #GDI
+> #GDI+
 1. Vẽ được các hình cơ bản: Line, Rectangle, Ellipse.
 2. Xử lý nhấn Shift để vẽ Straight Line, Square, Circle.
 3. Có khả năng Undo, Redo.
@@ -25,8 +25,7 @@
 1. Mở và lưu được các định dạng binary (.objpaint), bitmap (.bmp), png (.png).
 2. Ở định dạng binary có khả năng Undo, Redo - load lại phiên làm việc cũ.
 3. Ở định dạng bitmap, png chỉ có khả năng load hình và vẽ đè lên.
-4. Bitmap được xử lý bằng GDI. PNG được xử lý bằng GDI+.
-(Vì GDI+ mới hỗ trợ PNG. Còn GDI thì không hỗ trợ.)
+4. Bitmap, PNG được xử lý bằng GDI và GDI+.
 
 > #GUI
 1. Sử dụng các phím tắt để thao tác nhanh. (Bảng phím tắt ở dưới)
@@ -37,15 +36,20 @@
 1. Sử dụng BitBlt để giảm giật hình khi vẽ lại. Hiện tại thì tỉ lệ giật rất thấp. (hầu như là không có)
 Nhưng load PNG lên vẫn có lúc giật.
 Sử dụng kỹ thuật Double-buffing - các biến sử dụng thường xuyên được đặt static để xử lý nhanh.
-2. Sử dụng GDI+ để load định dạng PNG va save dưới dạng PNG.
-Kỹ thuật save PNG thực ra giống như save Bitmap chỉ convert Bitmap thành PNG dùng GDI+.
+
+### --------- CHANGE LOG ver 3.0 ----------
+1. Thay đổi hoàn toàn sang GDI+.
+2. Thêm các tính năng như chọn màu vẽ, kiểu nét vẽ, độ to của nét vẽ.
+3. Thêm giao diện Ribbon. Giúp giao diện nhìn đẹp, dễ thao tác và sử dụng.
+4. Thay đổi một số kỹ thuật nên không còn giật lag hình. (0%)
 
 ### -------------- MAIN FLOW --------------
 1. Khởi chạy chương trình, mặc định vẽ line, tùy chọn các hình vẽ cơ bản ở menu.
-2. Vẽ trên nền chương trình.
-3. Nhấn shift vẽ các đối tượng đặc biệt (đường thẳng, hình vuông, hình tròn).
-4. Có thể Save file những thứ đã vẽ lại dưới các định dạng  binary (.objpaint), bitmap (.bmp), png (.png).
-5. Có thể Open file để tiếp tục vẽ.
+2. Tùy chỉnh màu, nét vẽ theo sở thích, ý muốn.
+3. Vẽ trên nền chương trình.
+4. Nhấn shift vẽ các đối tượng đặc biệt (đường thẳng, hình vuông, hình tròn).
+5. Có thể Save file những thứ đã vẽ lại dưới các định dạng  binary (.objpaint), bitmap (.bmp), png (.png).
+6. Có thể Open file để tiếp tục vẽ.
 
 ### ---------- ADDITIONAL FLOW ------------
 1. Khi thoát chương trình, nếu đã vẽ mà chưa lưu sẽ hỏi có muốn lưu hay không?
@@ -60,3 +64,4 @@ Chú ý link repository trên là private đã add key public của giáo viên.
 ### ------------- LINK YOUTUBE ------------
 > ver 1.0: https://youtu.be/Jk_jeQDzUdc
 > ver 2.0: https://youtu.be/Gz5Pj7eGp3Q
+> ver 3.0: https://youtu.be/Mgr-8znKsyg

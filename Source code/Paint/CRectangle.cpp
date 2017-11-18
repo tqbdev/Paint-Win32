@@ -12,57 +12,51 @@ namespace MyPaint
 	{
 	}
 
-	void CRectangle::Draw(HWND hWnd, POINT leftTop, POINT rightBottom, BOOL bSetRop, HDC hdc)
+	void CRectangle::Draw(Graphics *gp, POINT leftTop, POINT rightBottom, COLORREF color, DashStyle penStyle, double penWidth, BOOL bSetRop)
 	{
-		this->leftTop_ = leftTop;
-		this->rightBottom_ = rightBottom;
+		CShape::SetValue(leftTop, rightBottom, color, penStyle, penWidth);
 
-		BOOL fCheck = FALSE;
-		if (hdc == NULL)
+		//if (bSetRop == TRUE) SetROP2(hdc, R2_MERGEPENNOT); // Chế độ vẽ không làm ảnh hưởng đến các hình đã vẽ
+
+		//SelectObject(hdc, GetStockObject(NULL_BRUSH)); // Nền trong suốt
+
+		Color iColor;
+		iColor.SetFromCOLORREF(this->color_);
+		Pen* pen = new Pen(iColor, this->penWidth_);
+		pen->SetDashStyle(this->penStyle_);
+
+		POINT upperConner;
+		if (leftTop_.x > rightBottom_.x && leftTop_.y > rightBottom_.y)
 		{
-			hdc = GetDC(hWnd);
-			fCheck = TRUE;
+			upperConner = rightBottom_;
+		}
+		else if (leftTop_.x < rightBottom_.x && leftTop_.y < rightBottom_.y)
+		{
+			upperConner = leftTop_;
+		}
+		else if (leftTop_.x < rightBottom_.x && leftTop_.y > rightBottom_.y)
+		{
+			upperConner.x = leftTop_.x;
+			upperConner.y = rightBottom_.y;
+		}
+		else
+		{
+			upperConner.x = rightBottom_.x;
+			upperConner.y = leftTop_.y;
 		}
 
-		if (bSetRop == TRUE) SetROP2(hdc, R2_MERGEPENNOT); // Chế độ vẽ không làm ảnh hưởng đến các hình đã vẽ
+		//Graphics* graphics = new Graphics(hdc);
+		gp->DrawRectangle(pen, upperConner.x, upperConner.y, abs(rightBottom_.x - leftTop_.x), abs(rightBottom_.y - leftTop_.y));
 
-		SelectObject(hdc, GetStockObject(NULL_BRUSH)); // Nền trong suốt
-
-		Rectangle(hdc, leftTop.x, leftTop.y, rightBottom.x, rightBottom.y);
-
-		if (fCheck) ReleaseDC(hWnd, hdc);
-	}
-
-	void CRectangle::ReDraw(HWND hWnd, HDC hdc)
-	{
-		Draw(hWnd, this->leftTop_, this->rightBottom_, TRUE, hdc);
+		delete pen;
+		//delete graphics;
 	}
 
 	void CRectangle::WriteBinary(std::ofstream &out)
 	{
 		int id = 1;
 		out.write((const char*)&id, sizeof(int));
-		int leftTopX = leftTop_.x;
-		int leftTopY = leftTop_.y;
-		int rightBottomX = rightBottom_.x;
-		int rightBottomY = rightBottom_.y;
-		out.write((const char*)&leftTopX, sizeof(int));
-		out.write((const char*)&leftTopY, sizeof(int));
-		out.write((const char*)&rightBottomX, sizeof(int));
-		out.write((const char*)&rightBottomY, sizeof(int));
-	}
-
-	void CRectangle::ReadBinary(std::ifstream &in)
-	{
-		int leftTopX, leftTopY, rightBottomX, rightBottomY;
-		in.read((char*)&leftTopX, sizeof(int));
-		in.read((char*)&leftTopY, sizeof(int));
-		in.read((char*)&rightBottomX, sizeof(int));
-		in.read((char*)&rightBottomY, sizeof(int));
-
-		leftTop_.x = leftTopX;
-		leftTop_.y = leftTopY;
-		rightBottom_.x = rightBottomX;
-		rightBottom_.y = rightBottomY;
+		
+		CShape::WriteBinary(out);
 	}
 }

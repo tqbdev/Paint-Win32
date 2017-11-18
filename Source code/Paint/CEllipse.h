@@ -1,17 +1,15 @@
 #pragma once
-#include "IShape.h"
+#include "CShape.h"
 
 namespace MyPaint
 {
-	class CEllipse : public IShape
+	class CEllipse : public CShape
 	{
 	public:
 		CEllipse();
 		~CEllipse();
 
-		void Draw(HWND hWnd, POINT leftTop, POINT rightBottom, BOOL bSetRop = TRUE, HDC hdc = NULL);
-		void ReDraw(HWND hWnd, HDC hdc = NULL);
+		void Draw(Graphics *gp, POINT leftTop, POINT rightBottom, COLORREF color, DashStyle penStyle, double penWidth, BOOL bSetRop = TRUE);
 		void WriteBinary(std::ofstream &out);
-		void ReadBinary(std::ifstream &in);
 	};
 }

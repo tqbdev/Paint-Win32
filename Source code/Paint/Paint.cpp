@@ -13,6 +13,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
 	// TODO: Place code here.
+	HRESULT hr = CoInitialize(NULL);
+	if (FAILED(hr)) return FALSE;
 
 	// Initialize global strings
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -39,6 +41,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		}
 	}
 
+	CoUninitialize();
+
 	return (int)msg.wParam;
 }
 
@@ -55,7 +59,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 
 	wcex.cbSize = sizeof(WNDCLASSEX);
 
-	wcex.style = CS_HREDRAW | CS_VREDRAW;
+	wcex.style = 0; // CS_HREDRAW | CS_VREDRAW;
 	wcex.lpfnWndProc = WndProc;
 	wcex.cbClsExtra = 0;
 	wcex.cbWndExtra = 0;
@@ -162,20 +166,24 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 	gStatusBar->Create(hwnd, IDC_STATUSBAR, hInst);
 	//
 	// Mặc định là vẽ đường thẳng
-	HMENU hMenu = GetMenu(hwnd);
-	CheckMenuItem(hMenu, ID_SHAPE_LINE, MF_CHECKED);
-	EnableMenuItem(hMenu, ID_EDIT_UNDO, MF_DISABLED);
-	EnableMenuItem(hMenu, ID_EDIT_REDO, MF_DISABLED);
-	gShapeType = 0;
+	gShapeType = ShapeType::LINE;
 	//
 	//
 	gStatusBar->Resize();
 	SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"Line");
 	//
 	SetWindowText(hwnd, L"Untitled - Paint");
+	// Khoi tao GDI+
+	MyPaint::GDIPlusSetup::GDIPlusInit();
 	//
-	MyPaint::Convert::GDIPlusInit();
-	//
+	// Load Ribbon Framework
+	bool initSucess = InitializeFramework(hwnd);
+	if (!initSucess) return FALSE;
+
+	// Set default button
+	ChangeStateRedo(false);
+	ChangeStateUndo(false);
+	ChangeToggleBtnValue(ID_CMD_LINE, true);
 	return TRUE;
 }
 
@@ -210,7 +218,7 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 
 		OpenFileDialog(hwnd);
 	}
-		break;
+	break;
 	case ID_FILE_NEW:
 	{
 		int size1 = gShapesUndoRedo.size();
@@ -230,8 +238,9 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 				return;
 			}
 		}
+		
+		MyPaint::ImageConvert::ClearImg();
 
-		gFileType = 1;
 		for (int i = size2 - 1; i >= 0; i--)
 		{
 			delete gShapes[i];
@@ -245,10 +254,9 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 		}
 
 		SetWindowText(hwnd, L"Untitled - Paint");
-		EnableMenuItem(hMenu, ID_EDIT_UNDO, MF_DISABLED);
-		EnableMenuItem(hMenu, ID_EDIT_REDO, MF_DISABLED);
-		RECT drawArea = { 0, 0, gArea.x, gArea.y };
-		InvalidateRect(hwnd, &drawArea, TRUE);
+		ChangeStateRedo(false);
+		ChangeStateUndo(false);
+		InvalidateRect(hwnd, &gDrawArea, FALSE);
 	}
 	break;
 	case ID_SHAPE_LINE:
@@ -261,7 +269,7 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 		SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"Ellipse");
 		goto Check;
 	Check:
-		gShapeType = id - ID_SHAPE_LINE;
+		gShapeType = (ShapeType)(id - ID_SHAPE_LINE);
 		for (int i = ID_SHAPE_LINE; i <= ID_SHAPE_ELLIPSE; i++)
 		{
 			CheckMenuItem(hMenu, i, !(id - i) ? MF_CHECKED : MF_UNCHECKED);
@@ -270,27 +278,27 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 	case ID_EDIT_UNDO:
 	{
 		int size = gShapes.size() - 1;
+		if (size < 0) break;
 		gShapesUndoRedo.push_back(gShapes[size]);
 		gShapes.pop_back();
 
-		if (size == 0) EnableMenuItem(hMenu, ID_EDIT_UNDO, MF_DISABLED);
+		if (size == 0) ChangeStateUndo(false);
 
-		EnableMenuItem(hMenu, ID_EDIT_REDO, MF_ENABLED);
-		RECT drawArea = { 0, 0, gArea.x, gArea.y };
-		InvalidateRect(hwnd, &drawArea, TRUE);
+		ChangeStateRedo(true);
+		InvalidateRect(hwnd, &gDrawArea, FALSE);
 	}
 	break;
 	case ID_EDIT_REDO:
 	{
 		int size = gShapesUndoRedo.size() - 1;
+		if (size < 0) break;
 		gShapes.push_back(gShapesUndoRedo[size]);
 		gShapesUndoRedo.pop_back();
 
-		if (size == 0) EnableMenuItem(hMenu, ID_EDIT_REDO, MF_DISABLED);
+		if (size == 0) ChangeStateRedo(false);
 
-		EnableMenuItem(hMenu, ID_EDIT_UNDO, MF_ENABLED);
-		RECT drawArea = { 0, 0, gArea.x, gArea.y };
-		InvalidateRect(hwnd, &drawArea, TRUE);
+		ChangeStateUndo(true);
+		InvalidateRect(hwnd, &gDrawArea, TRUE);
 	}
 	break;
 	case IDM_ABOUT:
@@ -310,63 +318,63 @@ void OnSize(HWND hwnd, UINT state, int cx, int cy)
 	GetWindowRect(GetDlgItem(hwnd, IDC_STATUSBAR), &statusBar);
 
 	WCHAR text[30];
-	gArea.x = cx - 1;
-	gArea.y = cy - (statusBar.bottom - statusBar.top) - 1;
-	wsprintf(text, L"%d, %dpx", gArea.x, gArea.y); // Trừ 1 do pixel bắt đầu từ 0
+	UINT heightRibbon;
+	HRESULT hr = GetRibbonHeight(&heightRibbon);
+
+	if (state != 5)
+	{
+		gDrawArea.left = 0;
+		gDrawArea.right = cx - 1;
+		gDrawArea.bottom = cy - (statusBar.bottom - statusBar.top) - 1;
+	}
+
+	GetRibbonHeight(&ribbonHeight);
+	gDrawArea.top = ribbonHeight;
+
+	wsprintf(text, L"%d, %dpx", gDrawArea.right - gDrawArea.left, gDrawArea.bottom - gDrawArea.top); // Trừ 1 do pixel bắt đầu từ 0
 	SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)text);
 }
 
 void OnMove(HWND hwnd, int x, int y)
 {
-	RECT drawArea = { 0, 0, gArea.x, gArea.y };
-	InvalidateRect(hwnd, &drawArea, TRUE);
+	InvalidateRect(hwnd, &gDrawArea, FALSE);
 }
 
 void OnPaint(HWND hwnd)
 {
-	static HDC          hdcMem;
-	static HBITMAP      hbmMem;
-	static HANDLE       hOld;
+	long width = gDrawArea.right - gDrawArea.left;
+	long height = gDrawArea.bottom - gDrawArea.top;
 
 	static PAINTSTRUCT ps;
 	static HDC hdc;
 	hdc = BeginPaint(hwnd, &ps);
 
-	hdcMem = CreateCompatibleDC(hdc);
-	hbmMem = CreateCompatibleBitmap(hdc, gArea.x + 1, gArea.y + 1);
-	
-	hOld = SelectObject(hdcMem, hbmMem);
+	if (hdcMem != NULL) DeleteDC(hdcMem);
+	hdcMem = GetHDCParent(hwnd, { width, height });
 
-	// Draw into hdcMem here
-	RECT rect = { 0,0,gArea.x + 1, gArea.y + 1 };
+	RECT rect = { 0,0,width, height };
 	FillRect(hdcMem, &rect, HBRUSH(RGB(255, 255, 255)));
+	
+	Gdiplus::Graphics *graphics = new Gdiplus::Graphics(hdcMem);
+	MyPaint::ImageConvert::ImgToHDC(graphics);
 
-	switch (gFileType)
+	if (gDrawing)
 	{
-	case 2:
-		//MyPaint::Convert::BMPToHDC(hwnd, hInst, gFileLoadedPath, hdcMem);
-		MyPaint::Convert::BMPToHDC(file, hdcMem);
-		break;
-	case 3:
-		//MyPaint::Convert::PNGToHDC(hwnd, hInst, gFileLoadedPath, hdcMem);
-		MyPaint::Convert::PNGToHDC(hdcMem);
-		break;
+		MyPaint::IShape *preview = MyPaint::CShapeCache::GetShape(gShapeType);
+		preview->ReDraw(graphics);
 	}
 
 	for (int i = 0; i < gShapes.size(); i++)
 	{
-		gShapes[i]->ReDraw(hwnd, hdcMem);
+		gShapes[i]->ReDraw(graphics);
 	}
 
 	// Transfer the off-screen DC to the screen
-	BitBlt(hdc, 0, 0, gArea.x + 1, gArea.y + 1, hdcMem, 0, 0, SRCCOPY);
-
-	// Free-up the off-screen DC
-	SelectObject(hdcMem, hOld);
-	DeleteObject(hbmMem);
-	DeleteDC(hdcMem);
+	BitBlt(hdc, 0, gDrawArea.top, width, height, hdcMem, 0, 0, SRCCOPY);
 
 	EndPaint(hwnd, &ps);
+	ReleaseDC(hwnd, hdc);
+	delete graphics;
 }
 
 void OnClose(HWND hwnd)
@@ -404,20 +412,20 @@ void OnClose(HWND hwnd)
 
 	delete gStatusBar;
 	MyPaint::CShapeCache::ClearCache();
-	MyPaint::Convert::GDIPlusDestroy();
-	DeleteObject(file);
+	MyPaint::GDIPlusSetup::GDIPlusDestroy();
+	if (hdcMem != NULL) DeleteDC(hdcMem);
 	DestroyWindow(hwnd);
 }
 
 void OnDestroy(HWND hwnd)
 {
+	DestroyFramework();
 	PostQuitMessage(0);
 }
 
 void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
 {
 	gDrawing = TRUE;
-
 	gLeftTop.x = gRightBottom.x = x;
 	gLeftTop.y = gRightBottom.y = y;
 }
@@ -430,20 +438,20 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 	{
 		if (keyFlags == MK_SHIFT + 1)
 		{
-			if (gShapeType == 0) // Line
+			if (gShapeType == ShapeType::LINE) // Line
 			{
 				if (x > gLeftTop.x && y > gLeftTop.y) // Goc phan tu thu 1
 				{
 					int c = y - x;
 					double d1 = abs(gLeftTop.x - gLeftTop.y + c) / sqrt(2);
-					
+
 					if (abs(y - gLeftTop.y) < d1) y = gLeftTop.y;
 					else if (abs(x - gLeftTop.x) < d1) x = gLeftTop.x;
 					else x = gLeftTop.x + abs(y - gLeftTop.y);
 				}
 				else if (x < gLeftTop.x && y > gLeftTop.y) // Goc phan tu thu 2
 				{
-					int c = - y - x;
+					int c = -y - x;
 					double d1 = abs(gLeftTop.x + gLeftTop.y + c) / sqrt(2);
 
 					if (abs(y - gLeftTop.y) < d1) y = gLeftTop.y;
@@ -486,16 +494,22 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 
 		MyPaint::IShape *preview = MyPaint::CShapeCache::GetShape(gShapeType);
 
-		preview->Draw(hwnd, gLeftTop, gRightBottom);
-
 		gRightBottom.x = x;
 		gRightBottom.y = y;
 
-		preview->Draw(hwnd, gLeftTop, gRightBottom);
+		POINT LeftTop; 
+		LeftTop.x = gLeftTop.x; 
+		LeftTop.y = gLeftTop.y - ribbonHeight;
+		POINT RightBottom; 
+		RightBottom.x = gRightBottom.x; 
+		RightBottom.y = gRightBottom.y - ribbonHeight;
+
+		preview->SetValue(LeftTop, RightBottom, gColor, (DashStyle)gDashStyle, gPenWidth);
+		InvalidateRect(hwnd, &gDrawArea, FALSE);
 	}
 
 	WCHAR text[30];
-	wsprintf(text, L"%d, %dpx", xOld, yOld);
+	wsprintf(text, L"%d, %dpx", xOld, yOld - ribbonHeight);
 	SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 0, (LPARAM)text);
 }
 
@@ -504,14 +518,15 @@ void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
 	if (gDrawing)
 	{
 		MyPaint::IShape *obj = gShapeFact.GetShape(gShapeType);
-		obj->Draw(hwnd, gLeftTop, gRightBottom, FALSE);
+		gLeftTop.y -= ribbonHeight;
+		gRightBottom.y -= ribbonHeight;
+		obj->SetValue(gLeftTop, gRightBottom, gColor, (DashStyle)gDashStyle, gPenWidth);
 		gShapes.push_back(obj);
 
-		EnableMenuItem(GetMenu(hwnd), ID_EDIT_UNDO, MF_ENABLED);
+		ChangeStateUndo(true);
 
 		gDrawing = FALSE;
-		RECT drawArea = { 0, 0, gArea.x, gArea.y };
-		InvalidateRect(hwnd, &drawArea, TRUE);
+		InvalidateRect(hwnd, &gDrawArea, FALSE);
 	}
 }
 
@@ -523,13 +538,13 @@ void OnKey(HWND hwnd, UINT vk, BOOL fDown, int cRepeat, UINT flags)
 		{
 			switch (gShapeType)
 			{
-			case 0:
+			case ShapeType::LINE:
 				SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"Straight line");
 				break;
-			case 1:
+			case ShapeType::RECTANGLE:
 				SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"Square");
 				break;
-			case 2:
+			case ShapeType::ELLIPSE:
 				SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"Circle");
 				break;
 			}
@@ -538,13 +553,13 @@ void OnKey(HWND hwnd, UINT vk, BOOL fDown, int cRepeat, UINT flags)
 		{
 			switch (gShapeType)
 			{
-			case 0:
+			case ShapeType::LINE:
 				SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"Line");
 				break;
-			case 1:
+			case ShapeType::RECTANGLE:
 				SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"Rectangle");
 				break;
-			case 2:
+			case ShapeType::ELLIPSE:
 				SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"Ellipse");
 				break;
 			}
@@ -555,8 +570,8 @@ void OnKey(HWND hwnd, UINT vk, BOOL fDown, int cRepeat, UINT flags)
 void SaveFileDialog(HWND hwnd)
 {
 	OPENFILENAME ofn;
-	WCHAR szFile[10260] = L"";
-
+	WCHAR *szFile = new WCHAR[10260];
+	ZeroMemory(szFile, sizeof(szFile));
 	ZeroMemory(&ofn, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 	ofn.hwndOwner = hwnd;
@@ -595,7 +610,7 @@ void SaveFileDialog(HWND hwnd)
 			if (ofn.nFileExtension == 0) buffer += L".bmp";
 
 			HDC dc = GetDC(hwnd);
-			MyPaint::Convert::HDCToBMP(buffer, dc, { 0, 0, gArea.x, gArea.y });
+			MyPaint::ImageConvert::HDCToBMP(buffer, dc, gDrawArea);
 			ReleaseDC(hwnd, dc);
 		}
 		break;
@@ -604,7 +619,7 @@ void SaveFileDialog(HWND hwnd)
 			if (ofn.nFileExtension == 0)buffer += L".png";
 
 			HDC dc = GetDC(hwnd);
-			MyPaint::Convert::HDCToPNG(buffer, dc, { 0, 0, gArea.x, gArea.y });
+			MyPaint::ImageConvert::HDCToPNG(buffer, dc, gDrawArea);
 			ReleaseDC(hwnd, dc);
 		}
 		break;
@@ -613,13 +628,15 @@ void SaveFileDialog(HWND hwnd)
 		buffer += L" - Paint";
 		SetWindowText(hwnd, const_cast<LPWSTR>(buffer.substr(ofn.nFileOffset).c_str()));
 	}
+
+	delete[] szFile;
 }
 
 void OpenFileDialog(HWND hwnd)
 {
 	OPENFILENAME ofn;
-	WCHAR szFile[10260] = L"";
-
+	WCHAR *szFile = new WCHAR[10260];
+	ZeroMemory(szFile, sizeof(szFile));
 	ZeroMemory(&ofn, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 	ofn.hwndOwner = hwnd;
@@ -636,8 +653,6 @@ void OpenFileDialog(HWND hwnd)
 		using namespace std;
 		wstring buffer = ofn.lpstrFile;
 
-		gFileType = ofn.nFilterIndex;
-
 		// Clear content
 		for (int i = gShapes.size() - 1; i >= 0; i--)
 		{
@@ -651,6 +666,9 @@ void OpenFileDialog(HWND hwnd)
 			gShapesUndoRedo.pop_back();
 		}
 		//
+		ChangeStateUndo(false);
+		ChangeStateRedo(false);
+
 		switch (ofn.nFilterIndex)
 		{
 		case 1:
@@ -671,17 +689,31 @@ void OpenFileDialog(HWND hwnd)
 		}
 		break;
 		case 2:
-			file = (HBITMAP)LoadImage(hInst, const_cast<LPWSTR>(buffer.c_str()), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-			break;
 		case 3:
-			MyPaint::Convert::LoadPNG(buffer);
+			MyPaint::ImageConvert::LoadImg(buffer);
 			break;
 		}
-		gFileLoadedPath = buffer;
 
 		buffer += L" - Paint";
 		SetWindowText(hwnd, const_cast<LPWSTR>(buffer.substr(ofn.nFileOffset).c_str()));
-		RECT drawArea = { 0, 0, gArea.x, gArea.y };
-		InvalidateRect(hwnd, &drawArea, TRUE);
+		InvalidateRect(hwnd, &gDrawArea, FALSE);
 	}
+	delete[] szFile;
+}
+
+HDC	GetHDCParent(HWND hwnd, SIZE size)
+{
+	HDC resHDC = NULL;
+	HBITMAP hBitmap = NULL;
+
+	HDC hdc = GetDC(hwnd);
+
+	resHDC = CreateCompatibleDC(hdc);
+	hBitmap = CreateCompatibleBitmap(hdc, size.cx, size.cy);
+
+	SelectObject(resHDC, hBitmap);
+	DeleteObject(hBitmap);
+	DeleteDC(hdc);
+
+	return resHDC;
 }

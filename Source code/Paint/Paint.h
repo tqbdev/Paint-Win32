@@ -5,6 +5,12 @@
 #include "CShapeFactory.h"
 #include "StatusBar.h"
 #include "Convert.h"
+#include "GDIPlusSetup.h"
+#include "RibbonFramework.h"
+#include "RibbonIDs.h"
+#include "Application.h"
+#include <Objbase.h>
+#pragma comment(lib, "Ole32.lib")
 #include <windowsx.h>
 
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
@@ -17,23 +23,29 @@ WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 HWND								ghWndMain;
+HDC									hdcMem = NULL;
 
 std::vector<MyPaint::IShape*>		gShapes;
 std::vector<MyPaint::IShape*>		gShapesUndoRedo;
 BOOL								gDrawing = FALSE;
-int									gShapeType;
+
+enum ShapeType
+{
+	LINE,
+	RECTANGLE,
+	ELLIPSE
+};
+ShapeType							gShapeType;
 
 POINT								gLeftTop;
 POINT								gRightBottom;
 
-POINT								gArea;
+RECT								gDrawArea;
 
 MyPaint::CShapeFactory				gShapeFact;
 MyPaint::StatusBar					*gStatusBar = NULL;
 
-std::wstring						gFileLoadedPath;
-int									gFileType = 1;
-HBITMAP								file = NULL;
+UINT								ribbonHeight;
 
 												// Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -57,3 +69,5 @@ void				OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags);
 
 void				SaveFileDialog(HWND hwnd); 
 void				OpenFileDialog(HWND hwnd);
+
+HDC					GetHDCParent(HWND hwnd, SIZE size);
