@@ -40,8 +40,10 @@ Sử dụng kỹ thuật Double-buffing - các biến sử dụng thường xuy�
 ### --------- CHANGE LOG ver 3.0 ----------
 1. Thay đổi hoàn toàn sang GDI+.
 2. Thêm các tính năng như chọn màu vẽ, kiểu nét vẽ, độ to của nét vẽ.
-3. Thêm giao diện Ribbon. Giúp giao diện nhìn đẹp, dễ thao tác và sử dụng.
-4. Thay đổi một số kỹ thuật nên không còn giật lag hình. (0%)
+3. Thêm tính năng đổ màu (Fill Color).
+4. Thêm giao diện Ribbon. Giúp giao diện nhìn đẹp, dễ thao tác và sử dụng.
+5. Thay đổi một số kỹ thuật nên không còn giật lag hình. (0%)
+6. Sửa đổi cải tiến Undo-Redo.
 
 ### -------------- MAIN FLOW --------------
 1. Khởi chạy chương trình, mặc định vẽ line, tùy chọn các hình vẽ cơ bản ở menu.

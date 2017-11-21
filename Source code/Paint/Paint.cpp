@@ -88,7 +88,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
 
-	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
 		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
 	ghWndMain = hWnd;
@@ -183,6 +183,8 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 	// Set default button
 	ChangeStateRedo(false);
 	ChangeStateUndo(false);
+	ChangeStateFillColorPicker(false);
+
 	ChangeToggleBtnValue(ID_CMD_LINE, true);
 	return TRUE;
 }
@@ -238,7 +240,7 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 				return;
 			}
 		}
-		
+
 		MyPaint::ImageConvert::ClearImg();
 
 		for (int i = size2 - 1; i >= 0; i--)
@@ -354,19 +356,19 @@ void OnPaint(HWND hwnd)
 
 	RECT rect = { 0,0,width, height };
 	FillRect(hdcMem, &rect, HBRUSH(RGB(255, 255, 255)));
-	
+
 	Gdiplus::Graphics *graphics = new Gdiplus::Graphics(hdcMem);
 	MyPaint::ImageConvert::ImgToHDC(graphics);
+
+	for (int i = 0; i < gShapes.size(); i++)
+	{
+		gShapes[i]->ReDraw(graphics);
+	}
 
 	if (gDrawing)
 	{
 		MyPaint::IShape *preview = MyPaint::CShapeCache::GetShape(gShapeType);
 		preview->ReDraw(graphics);
-	}
-
-	for (int i = 0; i < gShapes.size(); i++)
-	{
-		gShapes[i]->ReDraw(graphics);
 	}
 
 	// Transfer the off-screen DC to the screen
@@ -497,14 +499,14 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 		gRightBottom.x = x;
 		gRightBottom.y = y;
 
-		POINT LeftTop; 
-		LeftTop.x = gLeftTop.x; 
+		POINT LeftTop;
+		LeftTop.x = gLeftTop.x;
 		LeftTop.y = gLeftTop.y - ribbonHeight;
-		POINT RightBottom; 
-		RightBottom.x = gRightBottom.x; 
+		POINT RightBottom;
+		RightBottom.x = gRightBottom.x;
 		RightBottom.y = gRightBottom.y - ribbonHeight;
 
-		preview->SetValue(LeftTop, RightBottom, gColor, (DashStyle)gDashStyle, gPenWidth);
+		preview->SetValue(LeftTop, RightBottom, gColor, (DashStyle)gDashStyle, gPenWidth, gFillColor);
 		InvalidateRect(hwnd, &gDrawArea, FALSE);
 	}
 
@@ -520,10 +522,16 @@ void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
 		MyPaint::IShape *obj = gShapeFact.GetShape(gShapeType);
 		gLeftTop.y -= ribbonHeight;
 		gRightBottom.y -= ribbonHeight;
-		obj->SetValue(gLeftTop, gRightBottom, gColor, (DashStyle)gDashStyle, gPenWidth);
+		obj->SetValue(gLeftTop, gRightBottom, gColor, (DashStyle)gDashStyle, gPenWidth, gFillColor);
 		gShapes.push_back(obj);
 
 		ChangeStateUndo(true);
+		for (int i = gShapesUndoRedo.size() - 1; i >= 0; i--)
+		{
+			delete gShapesUndoRedo[i];
+			gShapesUndoRedo.pop_back();
+		}
+		ChangeStateRedo(false);
 
 		gDrawing = FALSE;
 		InvalidateRect(hwnd, &gDrawArea, FALSE);

@@ -115,15 +115,13 @@ namespace MyPaint
 		image = new Gdiplus::Image(const_cast<LPWSTR>(filePath.c_str()));
 	}
 
-	void ImageConvert::ImgToHDC(/*HDC hdc*/ Gdiplus::Graphics *gp)
+	void ImageConvert::ImgToHDC(Gdiplus::Graphics *gp)
 	{
 		using namespace Gdiplus;
 		if (image == NULL) return;
 
-		//Graphics *gp = new Graphics(hdc);
 		static Rect a = { 0,0, (INT)image->GetWidth(), (INT)image->GetHeight() };
 		gp->DrawImage(image, a);
-		//delete gp;
 	}
 
 	void ImageConvert::ClearImg()

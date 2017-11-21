@@ -12,7 +12,7 @@ namespace MyPaint
 	public:
 		static bool HDCToBMP(std::wstring filePath, HDC Context, RECT Area, uint16_t BitsPerPixel = 24);
 		static bool HDCToPNG(std::wstring filePath, HDC Context, RECT Area, uint16_t BitsPerPixel = 24);
-		static void ImgToHDC(/*HDC hdc*/ Gdiplus::Graphics *gp);
+		static void ImgToHDC(Gdiplus::Graphics *gp);
 		static void LoadImg(std::wstring &filePath);
 		static void ClearImg();
 	};
