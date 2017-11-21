@@ -66,4 +66,4 @@ Chú ý link repository trên là private đã add key public của giáo viên.
 ### ------------- LINK YOUTUBE ------------
 > ver 1.0: https://youtu.be/Jk_jeQDzUdc
 > ver 2.0: https://youtu.be/Gz5Pj7eGp3Q
-> ver 3.0: https://youtu.be/Mgr-8znKsyg
+> ver 3.0: https://youtu.be/YZnNOqd-Dsc
