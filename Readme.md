@@ -20,6 +20,7 @@
 1. Vẽ được các hình cơ bản: Line, Rectangle, Ellipse.
 2. Xử lý nhấn Shift để vẽ Straight Line, Square, Circle.
 3. Có khả năng Undo, Redo.
+4. Khử răng cưa. (Anti Aliasing - AA)
 
 > #Open File và Save File
 1. Mở và lưu được các định dạng binary (.objpaint), bitmap (.bmp), png (.png).
@@ -44,6 +45,7 @@ Sử dụng kỹ thuật Double-buffing - các biến sử dụng thường xuy�
 4. Thêm giao diện Ribbon. Giúp giao diện nhìn đẹp, dễ thao tác và sử dụng.
 5. Thay đổi một số kỹ thuật nên không còn giật lag hình. (0%)
 6. Sửa đổi cải tiến Undo-Redo.
+7. Khử răng cưa. (Anti Aliasing - AA)
 
 ### -------------- MAIN FLOW --------------
 1. Khởi chạy chương trình, mặc định vẽ line, tùy chọn các hình vẽ cơ bản ở menu.
@@ -66,4 +68,4 @@ Chú ý link repository trên là private đã add key public của giáo viên.
 ### ------------- LINK YOUTUBE ------------
 > ver 1.0: https://youtu.be/Jk_jeQDzUdc
 > ver 2.0: https://youtu.be/Gz5Pj7eGp3Q
-> ver 3.0: https://youtu.be/YZnNOqd-Dsc
+> ver 3.0: https://youtu.be/gONk4k_3V6E
